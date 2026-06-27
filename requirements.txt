@@ -13,3 +13,5 @@ torch-fidelity      # backs torchmetrics FrechetInceptionDistance
 scikit-learn        # prdc distances
 networkx            # MSD graph_out floor-plan graphs
 scipy
+scikit-image        # contour extraction for U-Net raster -> graph_out vectorize
+Pillow              # polygon rasterization (U-Net targets)
