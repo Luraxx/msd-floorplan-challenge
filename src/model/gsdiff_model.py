@@ -205,25 +205,27 @@ def _load_gen(dev):
 
 
 @__import__("torch").no_grad()
-def sample_plan(dev, N=256, T=250, edge_thresh=0.5):
+def sample_plan(dev, N=256, T=1000, edge_thresh=0.5):
     import torch
     den, edge = _load_gen(dev)
-    betas, a, abar = schedule(1000, dev)
-    step = 1000 // T
+    betas, a, abar = schedule(T, dev)
     x = torch.randn(1, N, DCH, device=dev)
-    for ti in range(1000 - 1, -1, -step):
+    for ti in range(T - 1, -1, -1):
         t = torch.full((1,), ti, device=dev)
-        ab = abar[ti]
-        pred = den(x, t.float() / 1000)
-        x0 = (x - (1 - ab).sqrt() * pred) / ab.sqrt().clamp(min=1e-4)
-        x0 = x0.clamp(-1.5, 1.5)
-        if ti - step >= 0:
-            ab_prev = abar[ti - step]
-            x = ab_prev.sqrt() * x0 + (1 - ab_prev).sqrt() * torch.randn_like(x)
+        eps = den(x, t.float() / T)
+        abar_t = abar[ti]
+        x0 = (x - (1 - abar_t).sqrt() * eps) / abar_t.sqrt()
+        x0 = x0.clamp(-2, 2)
+        if ti > 0:                                   # proper DDPM posterior step
+            abar_p = abar[ti - 1]
+            mean = (abar_p.sqrt() * betas[ti] / (1 - abar_t)) * x0 + \
+                   (a[ti].sqrt() * (1 - abar_p) / (1 - abar_t)) * x
+            var = betas[ti] * (1 - abar_p) / (1 - abar_t)
+            x = mean + var.sqrt() * torch.randn_like(x)
         else:
             x = x0
     feat = x[0, :, :FEAT]
-    valid = (x[0, :, FEAT] > 0.0)
+    valid = (x[0, :, FEAT] > 0.5)
     keep = torch.where(valid)[0]
     if len(keep) < 4:
         return None
