@@ -173,7 +173,10 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# 1) Download mds_V2_5.372k.csv from Kaggle into data/
+# 1) Data (gitignored, not in repo): download from Kaggle into data/
+#    data/mds_V2_5.372k.csv                  (polygon CSV)
+#    data/modified-swiss-dwellings-v2/       (16 GB graph/image dataset; train/ test/)
+#    Locally we use MSD = data/modified-swiss-dwellings-v2
 # 2) Explore + visualize
 python src/visualize.py                 # overview + grid of sample apartments
 python src/visualize.py --unit-id 64314 # one specific apartment
