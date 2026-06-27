@@ -5,10 +5,11 @@ shapely
 numpy
 matplotlib
 
-# Modelling / evaluation (added as we need them)
-# torch
-# torchvision
-# torchmetrics[image]
-# scikit-learn
-# networkx
-# tqdm
+# Evaluation pipeline
+torch
+torchvision
+torchmetrics
+torch-fidelity      # backs torchmetrics FrechetInceptionDistance
+scikit-learn        # prdc distances
+networkx            # MSD graph_out floor-plan graphs
+scipy

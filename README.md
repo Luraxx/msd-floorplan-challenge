@@ -41,9 +41,25 @@ area_id, unit_usage, entity_type, entity_subtype, geom, elevation, height, zonin
 
 `entity_type` breakdown: `separator` 602,196 · `opening` 281,320 · `area` 203,330.
 
-> The Kaggle archive also ships a **16 GB** `modified-swiss-dwellings-v2/` folder with
-> `train`/`test` splits (`struct_in`, `graph_in`, `graph_out`, `full_out`) — pre-rendered
-> ML-ready inputs/targets. Kept on disk in `~/Downloads/archive/`, not in this repo.
+### Two representations (important)
+
+| | `mds_V2_5.372k.csv` | `modified-swiss-dwellings-v2/` (16 GB) |
+|---|---|---|
+| Form | flat **polygons** (WKT) per `unit_id` | **graphs + tensors**, `train`/`test` splits |
+| Use | quick exploration, the Discord starter snippet | the canonical ML-ready format |
+
+Inside the v2 folder (4,572 train samples), per id:
+
+| Subfolder | Content |
+|---|---|
+| `graph_in` / `graph_out` | networkx graphs — **input** access graph / **target** floor plan |
+| `struct_in` | `(512,512,3)` float16 — model input condition (the structure) |
+| `full_out` | `(512,512,3)` float16 — **model-ready tensor, NOT a viewable image** (values ≈ −16…16) |
+
+A `graph_out` node has `geometry` (polygon coords), `room_type` (int), `centroid`;
+edges have `connectivity` (`door`/`passage`/`entrance`). This is exactly what MSD's
+`plot_floor` renders — so **`graph_out` is the canonical thing we score** (see §4).
+The v2 folder lives on disk at `~/Downloads/archive/`, not in this repo.
 
 ```python
 import pandas as pd, geopandas as gpd
@@ -85,18 +101,27 @@ metrics vs. real plans.**
 > ⚠️ Render generated **and** real plans with the *same* `plot.py` script — otherwise
 > render-style differences corrupt FID / density / coverage.
 
-```python
-# Density & Coverage
-from prdc import compute_prdc
-m = compute_prdc(real_features=real_feats, fake_features=fake_feats, nearest_k=5)
-# -> {'precision', 'recall', 'density', 'coverage'}
+**This repo implements the full pipeline** (`src/eval/`), validated end-to-end:
 
-# FID
-from torchmetrics.image.fid import FrechetInceptionDistance
-fid = FrechetInceptionDistance(feature=2048)
-fid.update(real_imgs, real=True); fid.update(fake_imgs, real=False)
-fid.compute()
+```bash
+# Compare your generated graph pickles against the real test set
+python src/eval/run_eval.py --real <real_graph_out_dir> --fake <your_generated_dir> --n 500
 ```
+
+- `src/msd_vendor/` — vendored MSD `plot.py` + `constants.py` (with a matplotlib≥3.9
+  `get_cmap` compat shim). `plot_floor(G, ax)` renders a graph natively.
+- `src/eval/render.py` — graph → fixed 512×512 uint8 RGB via the official `plot_floor`.
+- `src/eval/metrics.py` — **one** InceptionV3 (torchmetrics') feeds both FID and prdc,
+  so real & fake share identical preprocessing. FID uses float64 covariance.
+- `src/eval/prdc.py` — vendored density/coverage (MIT).
+
+**Sanity checks (passed):** `metrics(A, A)` → FID ≈ 0, density/coverage = 1.0.
+**Real-vs-real reference** (test vs train, N=200): FID ≈ 67, density ≈ 0.97,
+coverage ≈ 0.88 — roughly the best a model can reach at this sample size.
+
+> ⚠️ Local eval is **self-consistent** (real & fake share our renderer). For the
+> official leaderboard number, render with the organizers' exact `plot.py` settings.
+> Keep N equal on both sides; FID is biased upward below a few thousand samples.
 
 ---
 
@@ -128,7 +153,13 @@ Rooms (entity_type='area')  ──buffer/union/buffer──►  Outline (Input)
 ├── requirements.txt
 ├── data/                ← raw CSV (gitignored)
 ├── src/
-│   └── visualize.py     ← data exploration + (outline → rooms) plots
+│   ├── visualize.py     ← data exploration + (outline → rooms) plots
+│   ├── msd_vendor/      ← vendored MSD plot.py + constants.py (rendering)
+│   └── eval/            ← evaluation pipeline
+│       ├── render.py    ← graph → image (official plot_floor)
+│       ├── metrics.py   ← FID + density/coverage (shared InceptionV3)
+│       ├── prdc.py      ← vendored precision/recall/density/coverage
+│       └── run_eval.py  ← CLI: real vs generated → metrics
 ├── outputs/             ← rendered figures (gitignored)
 └── notebooks/           ← scratch / experiments
 ```
@@ -146,6 +177,9 @@ pip install -r requirements.txt
 # 2) Explore + visualize
 python src/visualize.py                 # overview + grid of sample apartments
 python src/visualize.py --unit-id 64314 # one specific apartment
+
+# 3) Evaluate generated plans (graph pickles) against real ones
+python src/eval/run_eval.py --real <real_dir> --fake <generated_dir> --n 500
 ```
 
 ---
@@ -155,6 +189,6 @@ python src/visualize.py --unit-id 64314 # one specific apartment
 - [x] Repo structure + README
 - [x] Data visualization (`src/visualize.py`) → `outputs/samples_overview.png`
 - [x] Download & inspect real CSV columns (confirmed: `roomtype`, walls/openings)
-- [ ] Evaluation pipeline (render → features → FID + density/coverage)
-- [ ] Baseline model (outline → rooms)
+- [x] Evaluation pipeline (render → features → FID + density/coverage) — validated
+- [ ] Baseline model (outline → rooms / graph)
 - [ ] Improve & iterate
