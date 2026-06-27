@@ -18,6 +18,36 @@ export type ModelDoc = {
 
 export const MODELS: ModelDoc[] = [
   {
+    id: "refine-v1",
+    name: "Refinement (U-Net → clean)",
+    family: "generative",
+    status: "trained",
+    generator: false,
+    date: "2026-06-27",
+    summary:
+      "A hybrid that keeps the U-Net's learned room distribution + sizes but cleans the geometry: a second U-Net learns to map the first U-Net's rough, blobby layout to the real clean layout. Improves the raw U-Net's FID by ~44 points.",
+    approach:
+      "Run the trained U-Net → argmax room-type map; feed it (one-hot) + the building interior to a refinement U-Net trained against the real rasterized graph_out (weighted cross-entropy); vectorize the cleaned map to a graph_out. Reliable closure (raster → vectorize), no graph-closure problem.",
+    config: [
+      { label: "Type", value: "learned refinement of the U-Net" },
+      { label: "Input", value: "U-Net argmax map + envelope" },
+      { label: "Resolution", value: "128 px" },
+      { label: "Test plans", value: "800" },
+      { label: "Hardware", value: "AMD MI300X" },
+    ],
+    metrics: { fid: 102.1, density: 0.092, coverage: 0.095, note: "n=800; raw U-Net was 145.7" },
+    strengths: [
+      "Cleans the U-Net's blobby output — +44 FID over the raw U-Net (145.7 → 102.1)",
+      "Keeps the U-Net's learned placement + room sizes",
+      "Closes reliably (unlike the GSDiff graph approach)",
+    ],
+    limitations: [
+      "Still raster-based (128 px) — not perfectly rectilinear; behind the rule-based Rectilinear (80.9)",
+      "Inherits the U-Net's mistakes where its layout is wrong",
+      "A rectilinear snap on top could push it further (next step)",
+    ],
+  },
+  {
     id: "gsdiff-v4",
     name: "GSDiff structural-graph diffusion",
     family: "generative",
