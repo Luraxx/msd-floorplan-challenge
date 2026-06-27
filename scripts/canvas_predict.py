@@ -58,6 +58,50 @@ def build_input(png_path, size):
     return x, col_vals, row_vals, free
 
 
+def render_aligned(G, col_vals, row_vals, free, size=512):
+    """Render the generated plan in the SKETCH's coordinate frame.
+
+    The official render_plan autoscales to the room bounding box, so a small plan
+    drawn in a corner gets blown up to fill the image and no longer matches the
+    sketch. Here we (a) fix the view to the sketch's full world extent and (b)
+    orient y like the canvas (row 0 = top), and (c) overlay the drawn walls — so
+    the result sits exactly where you drew it.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    sys.path.insert(0, os.path.join(ROOT, "src", "msd_vendor"))
+    import plot as msd_plot  # noqa
+    from skimage import measure
+
+    fig = plt.figure(figsize=(size / 100, size / 100), dpi=100)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_facecolor("white")
+    try:
+        if G.number_of_nodes() > 0:
+            msd_plot.plot_floor(G, ax)
+    except Exception:
+        pass
+    # overlay the walls you drew (contour of the free/interior mask)
+    try:
+        nc, nr = len(col_vals), len(row_vals)
+        for cont in measure.find_contours(free.astype(float), 0.5):
+            xs = [float(col_vals[min(int(round(c)), nc - 1)]) for _, c in cont]
+            ys = [float(row_vals[min(int(round(r)), nr - 1)]) for r, _ in cont]
+            ax.plot(xs, ys, color="#111111", lw=1.8, zorder=5)
+    except Exception:
+        pass
+    # frame to the sketch extent, y oriented like the canvas (top = row 0)
+    ax.set_xlim(float(col_vals.min()), float(col_vals.max()))
+    ax.set_ylim(float(row_vals.max()), float(row_vals.min()))
+    ax.set_aspect("equal")
+    ax.axis("off")
+    fig.canvas.draw()
+    buf = np.asarray(fig.canvas.buffer_rgba())[..., :3].copy()
+    plt.close(fig)
+    return buf
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="inp", required=True)
@@ -103,9 +147,8 @@ def main():
     # larger min room size for hand sketches -> fewer, cleaner rooms
     g = U.vectorize(lab, col_vals, row_vals, min_px=max(8, (size * size) // 700))
 
-    # render the generated plan
-    from render import render_plan
-    img = render_plan(g, size=512)
+    # render the generated plan IN THE SAME FRAME as the sketch so it lines up
+    img = render_aligned(g, col_vals, row_vals, free, size=512)
     Image.fromarray(img).save(args.out)
 
     # documentation: what's where
