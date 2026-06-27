@@ -1,0 +1,14 @@
+# Core data / geometry
+pandas
+geopandas
+shapely
+numpy
+matplotlib
+
+# Modelling / evaluation (added as we need them)
+# torch
+# torchvision
+# torchmetrics[image]
+# scikit-learn
+# networkx
+# tqdm
