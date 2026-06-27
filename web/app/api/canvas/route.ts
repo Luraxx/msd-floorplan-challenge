@@ -11,17 +11,21 @@ const execFileP = promisify(execFile);
 const ROOT = path.resolve(process.cwd(), "..");
 const PY = path.join(ROOT, ".venv", "bin", "python");
 const SCRIPT = path.join(ROOT, "scripts", "canvas_predict.py");
-const WEIGHTS = path.join(ROOT, "outputs", "unet.pt");
 const CANVAS_DIR = path.join(ROOT, "outputs", "canvas");
 
-// POST { image: dataURL(png of drawn walls), rooms?: number }
+// POST { image: dataURL(png of drawn walls), rooms?: number, model?: id }
 //   -> { ok, doc, image: dataURL(generated plan) }
 export async function POST(req: NextRequest) {
-  // a trained model must exist
-  try { await access(WEIGHTS); }
-  catch { return Response.json({ ok: false, error: "No trained model yet. Train one on the Live page first." }, { status: 400 }); }
-
   const body = await req.json().catch(() => ({}));
+
+  // resolve which model's weights to use (selected model from the store, else default)
+  const modelId = String(body?.model || "").replace(/[^a-zA-Z0-9_\-]/g, "");
+  const weights = modelId
+    ? path.join(ROOT, "outputs", "models", modelId, "weights.pt")
+    : path.join(ROOT, "outputs", "unet.pt");
+  try { await access(weights); }
+  catch { return Response.json({ ok: false, error: "Selected model has no weights yet. Pick a finished model or train one." }, { status: 400 }); }
+
   const dataUrl: string = body?.image || "";
   const m = dataUrl.match(/^data:image\/png;base64,(.+)$/);
   if (!m) return Response.json({ ok: false, error: "expected a PNG data URL in 'image'" }, { status: 400 });
@@ -37,7 +41,7 @@ export async function POST(req: NextRequest) {
   try {
     const { stdout } = await execFileP(
       PY,
-      [SCRIPT, "--in", sketchPath, "--out", planPath, "--weights", WEIGHTS, "--rooms", String(rooms)],
+      [SCRIPT, "--in", sketchPath, "--out", planPath, "--weights", weights, "--rooms", String(rooms)],
       { cwd: ROOT, timeout: 120000, maxBuffer: 4 << 20 },
     );
     const line = stdout.trim().split("\n").filter(Boolean).pop() || "{}";

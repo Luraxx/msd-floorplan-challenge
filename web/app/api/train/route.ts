@@ -34,6 +34,8 @@ type State = {
   startedAt: number;
   finishedAt: number | null;
   status: "running" | "done" | "stopped" | "error";
+  runId?: string;
+  modelName?: string;
 };
 
 function clamp(v: unknown, lo: number, hi: number, dflt: number): number {
@@ -127,6 +129,9 @@ export async function POST(req: NextRequest) {
       ntest: clamp(body?.ntest, 1, 800, 200),
     };
     await mkdir(OUTPUTS, { recursive: true });
+    const startedAt = Date.now();
+    const runId = `web-${startedAt}`;
+    const modelName = `U-Net · ${config.size}px · ${config.epochs}ep`;
     const fd = openSync(LOG, "w"); // truncate
     const child = spawn("bash", [SCRIPT], {
       cwd: ROOT,
@@ -139,12 +144,14 @@ export async function POST(req: NextRequest) {
         BATCH: String(config.batch),
         NTRAIN: String(config.ntrain),
         NTEST: String(config.ntest),
+        RUN_ID: runId,
+        MODEL_NAME: modelName,
       },
     });
     child.unref();
-    const st: State = { pid: child.pid ?? null, config, startedAt: Date.now(), finishedAt: null, status: "running" };
+    const st: State = { pid: child.pid ?? null, config, startedAt, finishedAt: null, status: "running", runId, modelName };
     await writeFile(STATE, JSON.stringify(st));
-    return Response.json({ ok: true, pid: child.pid, config });
+    return Response.json({ ok: true, pid: child.pid, runId, config });
   }
 
   return Response.json({ ok: false, error: "unknown action" }, { status: 400 });

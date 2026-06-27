@@ -27,7 +27,8 @@ export default function ResultsPanel() {
     return () => clearInterval(t);
   }, []);
 
-  const run = data?.runs?.[runIdx];
+  const withPlans = (data?.runs ?? []).filter((r) => r.count > 0);
+  const run = withPlans[runIdx];
   const id = run?.ids?.[pos];
 
   const cards = useMemo(() => {
@@ -84,7 +85,7 @@ export default function ResultsPanel() {
             onChange={(e) => { setRunIdx(Number(e.target.value)); setPos(0); }}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
           >
-            {data.runs.map((r, i) => (
+            {withPlans.map((r, i) => (
               <option key={r.dir} value={i}>{r.label} ({r.count} plans)</option>
             ))}
           </select>

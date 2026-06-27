@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DrawCanvas, { DrawCanvasHandle } from "./DrawCanvas";
 
 type Room = { type: number; name: string; color: string; count: number };
 type Doc = { n_rooms: number; n_connections: number; free_fraction: number; rooms: Room[]; weights: string };
+type Model = { id: string; name: string; status: string; hasWeights: boolean; metrics?: { fid?: number } | null };
 
 export default function StudioPanel() {
   const canvas = useRef<DrawCanvasHandle | null>(null);
@@ -13,6 +14,19 @@ export default function StudioPanel() {
   const [err, setErr] = useState("");
   const [plan, setPlan] = useState<string | null>(null);
   const [doc, setDoc] = useState<Doc | null>(null);
+  const [models, setModels] = useState<Model[]>([]);
+  const [model, setModel] = useState<string>("");
+
+  useEffect(() => {
+    fetch("/api/models", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        const usable: Model[] = (d.models || []).filter((m: Model) => m.hasWeights);
+        setModels(usable);
+        if (usable.length) setModel((cur) => cur || usable[0].id);
+      })
+      .catch(() => {});
+  }, []);
 
   const generate = async () => {
     const image = canvas.current?.getPNG();
@@ -22,7 +36,7 @@ export default function StudioPanel() {
       const r = await fetch("/api/canvas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image, rooms }),
+        body: JSON.stringify({ image, rooms, model }),
       });
       const d = await r.json();
       if (!d.ok) { setErr(d.error || "generation failed"); return; }
@@ -47,6 +61,21 @@ export default function StudioPanel() {
         <DrawCanvas ref={canvas} />
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-xs font-medium text-slate-500">
+            Model
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-900"
+            >
+              {models.length === 0 && <option value="">no trained model</option>}
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}{m.metrics?.fid != null ? ` · FID ${m.metrics.fid.toFixed(0)}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-xs font-medium text-slate-500">
             Room hint
             <input
               type="number" min={0} max={40} value={rooms}
@@ -57,7 +86,8 @@ export default function StudioPanel() {
           </label>
           <button
             onClick={generate}
-            disabled={busy}
+            disabled={busy || !model}
+            title={!model ? "train a model first" : ""}
             className="ml-auto rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             {busy ? "Generating…" : "✨ Generate floor plan"}

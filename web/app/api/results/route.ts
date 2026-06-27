@@ -1,50 +1,43 @@
-import { readFile, readdir, stat } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ROOT = path.resolve(process.cwd(), "..");
-const OUTPUTS = path.join(ROOT, "outputs");
+const STORE = path.join(ROOT, "outputs", "models");
 
-const DIRS = [
-  { dir: "generated_web", label: "Your last web run", metrics: "web_metrics.json" },
-  { dir: "generated_unet", label: "Full MI300X run", metrics: "full_metrics.json" as string | null },
-];
-
-async function listIds(dir: string): Promise<string[]> {
+async function listIds(id: string): Promise<string[]> {
   try {
-    const files = await readdir(path.join(OUTPUTS, dir));
+    const files = await readdir(path.join(STORE, id, "generated"));
     return files.filter((f) => f.endsWith(".pickle")).map((f) => f.slice(0, -7))
       .sort((a, b) => Number(a) - Number(b));
   } catch { return []; }
 }
 
-async function readMetrics(name: string | null): Promise<Record<string, number> | null> {
-  if (!name) return null;
-  try { return JSON.parse(await readFile(path.join(OUTPUTS, name), "utf8")); } catch { return null; }
-}
-
-async function mtime(dir: string): Promise<number | null> {
-  try { return (await stat(path.join(OUTPUTS, dir))).mtimeMs; } catch { return null; }
-}
-
-// GET /api/results -> generated runs with metrics + sample ids
+// GET /api/results -> every trained model with its metrics + generated ids
 export async function GET() {
+  let dirs: string[] = [];
+  try { dirs = await readdir(STORE); } catch { /* empty store */ }
+
   const runs = [];
-  for (const d of DIRS) {
-    const ids = await listIds(d.dir);
-    if (!ids.length) continue;
+  for (const id of dirs) {
+    let meta: { name?: string; metrics?: Record<string, number> | null; createdAt?: number; status?: string };
+    try { meta = JSON.parse(await readFile(path.join(STORE, id, "meta.json"), "utf8")); }
+    catch { continue; }
+    const ids = await listIds(id);
     runs.push({
-      dir: d.dir,
-      label: d.label,
+      dir: id,                       // used as the /api/sample pred param
+      label: meta.name || id,
       count: ids.length,
-      ids: ids.slice(0, 120),
-      metrics: await readMetrics(d.metrics),
-      updatedAt: await mtime(d.dir),
+      ids: ids.slice(0, 200),
+      metrics: meta.metrics ?? null,
+      status: meta.status ?? "done",
+      createdAt: meta.createdAt ?? 0,
     });
   }
-  // static reference baselines (from the repo's documented evaluations)
+  runs.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+
   const baselines = [
     { name: "Retrieval v1", fid: 36.0, density: 0.91, coverage: 0.89 },
     { name: "Retrieval v2 (structure-aware)", fid: 34.1, density: 0.87, coverage: 0.91 },

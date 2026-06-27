@@ -34,8 +34,9 @@ export async function GET(req: NextRequest) {
     await mkdir(CACHE, { recursive: true });
     const args = ["--split", split, "--id", id, "--kind", kind, "--out", outPath, "--size", String(size)];
     if (kind === "pred") {
-      if (!predDir) return new Response("missing pred dir", { status: 400 });
-      args.push("--pred-dir", path.join(ROOT, "outputs", predDir));
+      if (!predDir) return new Response("missing pred model", { status: 400 });
+      // pred = model id -> its generated predictions in the model store
+      args.push("--pred-dir", path.join(ROOT, "outputs", "models", predDir, "generated"));
     }
     try {
       await execFileP(PY, [SCRIPT, ...args], { cwd: ROOT, timeout: 30000, maxBuffer: 1 << 20 });
