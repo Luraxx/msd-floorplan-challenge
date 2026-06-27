@@ -71,10 +71,10 @@ function MiniViz({ n }: { n: number }) {
         <circle cx="22" cy="34" r="6" fill="#cbd5e1" /><circle cx="44" cy="50" r="6" fill="#cbd5e1" /><circle cx="26" cy="62" r="6" fill="#cbd5e1" />
         <line x1="22" y1="34" x2="44" y2="50" stroke="#cbd5e1" strokeWidth="2" /><line x1="44" y1="50" x2="26" y2="62" stroke="#cbd5e1" strokeWidth="2" />
         <text x="34" y="84" textAnchor="middle" fontSize="11" fill="#64748b">query</text>
-        <A x="64" />
+        <A x={64} />
         <rect x="98" y="28" width="58" height="36" rx="8" fill="#eef2ff" stroke="#c7d2fe" /><text x="127" y="51" textAnchor="middle" fontSize="16" fill="#4338ca">≈</text>
         <text x="127" y="84" textAnchor="middle" fontSize="11" fill="#64748b">match</text>
-        <A x="160" />
+        <A x={160} />
         <g transform="translate(196,22)">
           <rect width="48" height="48" rx="4" fill="#ecfdf5" stroke="#a7f3d0" />
           <rect x="4" y="4" width="20" height="26" fill="#6ee7b7" /><rect x="26" y="4" width="18" height="14" fill="#fcd34d" /><rect x="26" y="20" width="18" height="14" fill="#93c5fd" /><rect x="4" y="32" width="40" height="12" fill="#c4b5fd" />
@@ -92,13 +92,13 @@ function MiniViz({ n }: { n: number }) {
           <line x1="0" y1="20" x2="48" y2="20" stroke="#334155" strokeWidth="2" /><line x1="24" y1="20" x2="24" y2="48" stroke="#334155" strokeWidth="2" /><line x1="24" y1="8" x2="24" y2="14" stroke="#334155" strokeWidth="2" />
         </g>
         <text x="32" y="84" textAnchor="middle" fontSize="11" fill="#64748b">walls</text>
-        <A x="64" />
+        <A x={64} />
         <g transform="translate(98,22)">
           <rect width="48" height="48" rx="4" fill="#f1f5f9" stroke="#cbd5e1" />
           <rect x="2" y="2" width="20" height="16" fill="none" stroke="#6366f1" strokeWidth="1.5" /><rect x="24" y="2" width="22" height="16" fill="none" stroke="#6366f1" strokeWidth="1.5" /><rect x="2" y="20" width="44" height="26" fill="none" stroke="#6366f1" strokeWidth="1.5" />
         </g>
         <text x="122" y="84" textAnchor="middle" fontSize="11" fill="#64748b">faces</text>
-        <A x="160" />
+        <A x={160} />
         <g transform="translate(196,22)">
           <rect width="48" height="48" rx="4" fill="#ecfdf5" stroke="#a7f3d0" />
           <rect x="2" y="2" width="20" height="16" fill="#93c5fd" /><rect x="24" y="2" width="22" height="16" fill="#fcd34d" /><rect x="2" y="20" width="44" height="26" fill="#6ee7b7" />
@@ -118,16 +118,16 @@ function MiniViz({ n }: { n: number }) {
           ))}
         </g>
         <text x="33" y="84" textAnchor="middle" fontSize="11" fill="#64748b">noise</text>
-        <A x="62" />
+        <A x={62} />
         <text x="96" y="50" textAnchor="middle" fontSize="11" fill="#7c3aed">denoise</text>
         <text x="96" y="64" textAnchor="middle" fontSize="11" fill="#7c3aed">×T</text>
-        <A x="118" />
+        <A x={118} />
         <g transform="translate(152,24)">
           <rect width="46" height="46" rx="4" fill="#faf5ff" stroke="#e9d5ff" />
           <polygon points="6,8 40,8 40,40 22,40 22,26 6,26" fill="none" stroke="#9333ea" strokeWidth="2" />
         </g>
         <text x="175" y="84" textAnchor="middle" fontSize="11" fill="#7c3aed">polygon</text>
-        <A x="206" />
+        <A x={206} />
         <g transform="translate(244,24)">
           <rect width="46" height="46" rx="4" fill="#ecfdf5" stroke="#a7f3d0" />
           <rect x="4" y="4" width="38" height="38" fill="#6ee7b7" opacity="0.6" />
@@ -146,10 +146,10 @@ function MiniViz({ n }: { n: number }) {
           <line x1="14" y1="16" x2="34" y2="14" stroke="#a5b4fc" strokeWidth="2" /><line x1="34" y1="14" x2="24" y2="34" stroke="#a5b4fc" strokeWidth="2" />
         </g>
         <text x="34" y="84" textAnchor="middle" fontSize="11" fill="#64748b">graph</text>
-        <A x="64" />
+        <A x={64} />
         <rect x="98" y="30" width="58" height="32" rx="8" fill="#eef2ff" stroke="#c7d2fe" /><text x="127" y="50" textAnchor="middle" fontSize="11" fill="#4338ca">GNN+CNN</text>
         <text x="127" y="84" textAnchor="middle" fontSize="11" fill="#64748b">retrieve</text>
-        <A x="160" />
+        <A x={160} />
         <g transform="translate(196,22)">
           <rect width="48" height="48" rx="4" fill="#f1f5f9" stroke="#cbd5e1" />
           <rect x="4" y="4" width="22" height="20" fill="none" stroke="#f59e0b" strokeWidth="2" /><rect x="28" y="4" width="16" height="20" fill="none" stroke="#f59e0b" strokeWidth="2" /><rect x="4" y="26" width="40" height="18" fill="none" stroke="#f59e0b" strokeWidth="2" />
@@ -166,10 +166,10 @@ function MiniViz({ n }: { n: number }) {
         <line x1="0" y1="22" x2="48" y2="22" stroke="#334155" strokeWidth="1.5" /><line x1="22" y1="22" x2="22" y2="48" stroke="#334155" strokeWidth="1.5" />
       </g>
       <text x="34" y="84" textAnchor="middle" fontSize="11" fill="#64748b">image</text>
-      <A x="64" />
+      <A x={64} />
       <path d="M100,28 L108,28 L114,56 L120,56 L126,28 L134,28" fill="none" stroke="#6366f1" strokeWidth="2.5" />
       <text x="117" y="84" textAnchor="middle" fontSize="11" fill="#4338ca">U-Net</text>
-      <A x="160" />
+      <A x={160} />
       <g transform="translate(196,22)">
         <rect width="48" height="48" rx="4" fill="#ecfdf5" stroke="#a7f3d0" />
         <rect x="2" y="2" width="44" height="20" fill="#93c5fd" /><rect x="2" y="24" width="22" height="22" fill="#6ee7b7" /><rect x="26" y="24" width="20" height="22" fill="#fcd34d" />
