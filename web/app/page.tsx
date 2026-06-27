@@ -4,14 +4,17 @@ import Explorer from "../components/Explorer";
 import Pipeline from "../components/Pipeline";
 import BestModel from "../components/BestModel";
 import Strategies from "../components/Strategies";
+import KeyFacts from "../components/KeyFacts";
+import Literature from "../components/Literature";
 import { RoomTypeChart, RoomsHistogram } from "../components/Charts";
 
 const NAV = [
   ["explorer", "Explorer"],
   ["model", "Best model"],
   ["strategies", "Strategies"],
-  ["task", "The task"],
+  ["keyfacts", "Key facts"],
   ["data", "Dataset"],
+  ["literature", "Literature"],
   ["pipeline", "Evaluation"],
   ["about", "About"],
 ];
@@ -94,6 +97,16 @@ export default function Home() {
         <Strategies />
       </Section>
 
+      {/* key facts */}
+      <div className="border-y border-slate-200 bg-white">
+        <Section id="keyfacts" eyebrow="Key facts" title="The dataset at a glance">
+          <p className="mb-8 max-w-2xl text-slate-600">
+            The headline numbers and specs from the official Modified Swiss Dwellings dataset page.
+          </p>
+          <KeyFacts />
+        </Section>
+      </div>
+
       {/* task */}
       <div className="border-y border-slate-200 bg-white">
         <Section id="task" eyebrow="The problem" title="From a bubble diagram to a real layout">
@@ -129,8 +142,15 @@ export default function Home() {
         </div>
       </Section>
 
-      {/* pipeline */}
+      {/* literature */}
       <div className="border-t border-slate-200 bg-white">
+        <Section id="literature" eyebrow="Literature" title="Papers behind the project">
+          <Literature />
+        </Section>
+      </div>
+
+      {/* pipeline */}
+      <div className="border-t border-slate-200 bg-paper">
         <Section id="pipeline" eyebrow="Evaluation" title="How plans are scored">
           <Pipeline />
         </Section>
