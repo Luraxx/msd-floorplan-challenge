@@ -1,114 +1,254 @@
 import Link from "next/link";
 import { data } from "./data";
-import { Section, MetricCard, Chip } from "../components/ui";
 import Nav from "../components/Nav";
 import Footer from "../components/Footer";
+import Reveal from "../components/Reveal";
+import Counter from "../components/Counter";
+import FidBars from "../components/FidBars";
 
-const PAGES = [
-  {
-    href: "/studio",
-    eyebrow: "Studio",
-    title: "Draw → generate",
-    body: "Sketch walls with your pencil; the trained model lays out the rooms inside and documents what goes where.",
-  },
-  {
-    href: "/live",
-    eyebrow: "Live",
-    title: "Train & explore, live",
-    body: "Browse the real 16 GB dataset, launch a training run on the GPU and watch it learn, then compare generated plans to the truth.",
-  },
-  {
-    href: "/models",
-    eyebrow: "Models",
-    title: "Documented models",
-    body: "One card per model we build — approach, config and measured FID / density / coverage. New models land here automatically.",
-  },
-  {
-    href: "/research",
-    eyebrow: "Research",
-    title: "Ideas, methods & papers",
-    body: "The strategies we're weighing, how plans are scored, the dataset specs and the full reading list behind the project.",
-  },
+function Cta({ href, children, dark }: { href: string; children: React.ReactNode; dark?: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={
+        dark
+          ? "rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+          : "rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+      }
+    >
+      {children}
+    </Link>
+  );
+}
+
+const SAMPLES = [
+  { kind: "walls", title: "Walls", note: "the given load-bearing structure", img: "/data/samples/10298_walls.png" },
+  { kind: "rooms", title: "Rooms", note: "the target layout to generate", img: "/data/samples/10298_rooms.png" },
+  { kind: "graph", title: "Access graph", note: "which rooms connect to which", img: "/data/samples/10298_graph.png" },
 ];
 
 export default function Home() {
   const s = data.stats;
   return (
-    <main className="min-h-screen">
+    <div className="h-[100dvh] snap-y snap-proximity overflow-y-scroll scroll-smooth bg-paper">
       <Nav />
 
-      {/* hero */}
-      <div className="grid-bg border-b border-slate-200">
-        <div className="mx-auto max-w-6xl px-5 py-20 md:py-28">
-          <Chip color="#4f46e5">Modified Swiss Dwellings · live on an AMD MI300X</Chip>
-          <h1 className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.1] tracking-tight text-slate-900 md:text-6xl">
-            Draw it. Train it.<br />Generate the floor plan.
-          </h1>
-          <p className="mt-5 max-w-2xl text-lg text-slate-600">
-            A live tool for floor-plan generation: sketch a structure and the model lays out the rooms,
-            train new models on the GPU and watch them learn, and browse {s.apartments.toLocaleString()} real
-            apartments — all from the browser.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/studio" className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700">
-              ✦ Open the Studio
-            </Link>
-            <Link href="/live" className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 hover:border-slate-400">
-              Watch it train live
-            </Link>
-          </div>
-
-          <div className="mt-14 grid grid-cols-2 gap-4 md:grid-cols-4">
-            <MetricCard label="Apartments" value={s.apartments.toLocaleString()} />
-            <MetricCard label="Floors" value={s.floors.toLocaleString()} />
-            <MetricCard label="Geometries" value={(s.geometries / 1e6).toFixed(2) + "M"} />
-            <MetricCard label="Avg. rooms" value={String(s.avgRooms)} sub={`median ${s.medianRooms}`} />
-          </div>
-        </div>
-      </div>
-
-      {/* page cards */}
-      <Section eyebrow="The site" title="Three places to look">
-        <p className="mb-8 max-w-2xl text-slate-600">
-          This page is just the summary. Each area below has its own page with the full detail.
-        </p>
-        <div className="grid gap-6 md:grid-cols-3">
-          {PAGES.map((p) => (
-            <Link
-              key={p.href}
-              href={p.href}
-              className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-indigo-300 hover:shadow"
-            >
-              <div className="text-xs font-semibold uppercase tracking-wide text-indigo-600">{p.eyebrow}</div>
-              <div className="mt-2 text-lg font-semibold text-slate-900">{p.title}</div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{p.body}</p>
-              <span className="mt-4 text-sm font-medium text-indigo-600 group-hover:underline">Open →</span>
-            </Link>
-          ))}
-        </div>
-      </Section>
-
-      {/* best model teaser */}
-      <div className="border-y border-slate-200 bg-white">
-        <Section eyebrow="Current status" title="Best model so far">
-          <div className="grid gap-6 md:grid-cols-[1.3fr_1fr] md:items-center">
-            <p className="max-w-xl text-slate-600">
-              A structure-aware retrieval baseline scores near the real-vs-real ceiling, while the
-              graph-informed U-Net is our honest generator — the one that powers the Studio. Every model
-              is documented on the <Link href="/models" className="text-indigo-600 underline">Models</Link> page.
+      {/* ───────────────────── Slide 1 · Title ───────────────────── */}
+      <section className="slide-dark relative flex min-h-[100dvh] snap-start items-center px-5 text-white">
+        <div className="mx-auto w-full max-w-5xl py-24">
+          <Reveal variant="fade">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs font-medium text-indigo-200">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              Modified Swiss Dwellings · live on an AMD MI300X
+            </span>
+          </Reveal>
+          <Reveal delay={120}>
+            <h1 className="mt-6 text-5xl font-semibold leading-[1.05] tracking-tight md:text-7xl">
+              Draw it. Train it.
+              <br />
+              <span className="bg-gradient-to-r from-indigo-300 via-sky-300 to-emerald-300 bg-clip-text text-transparent">
+                Generate the floor plan.
+              </span>
+            </h1>
+          </Reveal>
+          <Reveal delay={260}>
+            <p className="mt-6 max-w-2xl text-lg text-slate-300 md:text-xl">
+              An end-to-end tool for the floor-plan generation challenge — sketch a structure and the model
+              lays out the rooms, train new models on the GPU, and browse {s.apartments.toLocaleString()} real
+              apartments. All from the browser.
             </p>
-            {data.eval.baseline && (
-              <div className="grid grid-cols-3 gap-3">
-                <MetricCard label="FID" value={data.eval.baseline.fid.toFixed(1)} sub="lower better" />
-                <MetricCard label="Density" value={data.eval.baseline.density.toFixed(2)} sub="higher better" />
-                <MetricCard label="Coverage" value={data.eval.baseline.coverage.toFixed(2)} sub="higher better" />
-              </div>
-            )}
+          </Reveal>
+          <Reveal delay={420}>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Cta href="/studio" dark>
+                ✦ Open the Studio
+              </Cta>
+              <Link
+                href="/live"
+                className="rounded-xl border border-white/25 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Watch it train live
+              </Link>
+            </div>
+          </Reveal>
+        </div>
+        <div className="scroll-hint absolute bottom-8 left-1/2 -translate-x-1/2 text-sm text-slate-400">
+          ↓ scroll the deck
+        </div>
+      </section>
+
+      {/* ───────────────────── Slide 2 · The challenge ───────────────────── */}
+      <section className="flex min-h-[100dvh] snap-start items-center px-5">
+        <div className="mx-auto w-full max-w-6xl py-24">
+          <Reveal>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">The challenge</p>
+            <h2 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">
+              Given the walls, design the rooms.
+            </h2>
+          </Reveal>
+          <Reveal delay={120}>
+            <p className="mt-5 max-w-2xl text-lg text-slate-600">
+              The structure only gives the load-bearing envelope — not the partition walls. The task: generate
+              a complete, plausible room layout for every building.
+            </p>
+          </Reveal>
+          <div className="mt-14 grid grid-cols-2 gap-5 md:grid-cols-4">
+            {[
+              { v: <Counter to={s.apartments} />, l: "apartments" },
+              { v: <Counter to={s.geometries / 1e6} decimals={2} suffix="M" />, l: "geometries" },
+              { v: <Counter to={s.trainSamples} />, l: "train plans" },
+              { v: <Counter to={s.testSamples} />, l: "test plans" },
+            ].map((m, i) => (
+              <Reveal key={i} variant="up" delay={i * 110}>
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">{m.v}</div>
+                  <div className="mt-2 text-sm font-medium uppercase tracking-wide text-slate-500">{m.l}</div>
+                </div>
+              </Reveal>
+            ))}
           </div>
-        </Section>
-      </div>
+        </div>
+      </section>
+
+      {/* ───────────────────── Slide 3 · The data ───────────────────── */}
+      <section className="flex min-h-[100dvh] snap-start items-center border-y border-slate-200 bg-white px-5">
+        <div className="mx-auto w-full max-w-6xl py-24">
+          <Reveal>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">What the model sees</p>
+            <h2 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">
+              Three views of every home.
+            </h2>
+          </Reveal>
+          <div className="mt-14 grid gap-6 md:grid-cols-3">
+            {SAMPLES.map((sm, i) => (
+              <Reveal key={sm.kind} variant="up" delay={i * 130}>
+                <figure className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
+                  <div className="aspect-square w-full bg-white">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={sm.img} alt={sm.title} className="h-full w-full object-contain" />
+                  </div>
+                  <figcaption className="border-t border-slate-200 px-4 py-3">
+                    <div className="text-base font-semibold text-slate-900">{sm.title}</div>
+                    <div className="text-sm text-slate-500">{sm.note}</div>
+                  </figcaption>
+                </figure>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ───────────────────── Slide 4 · Models / leaderboard ───────────────────── */}
+      <section className="flex min-h-[100dvh] snap-start items-center px-5">
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-12 py-24 lg:grid-cols-2">
+          <Reveal variant="left">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">What we built</p>
+            <h2 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">
+              A leaderboard of models.
+            </h2>
+            <p className="mt-5 max-w-md text-lg text-slate-600">
+              From a learned U-Net to rule-based generators that exploit how real homes are shaped —
+              <strong> rectangular rooms aligned to the outer walls</strong>, balconies pushed to the facade.
+              Each one is documented and scored live.
+            </p>
+            <div className="mt-7">
+              <Cta href="/models">See every model →</Cta>
+            </div>
+          </Reveal>
+          <Reveal variant="right" delay={140}>
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
+              <FidBars />
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ───────────────────── Slide 5 · Studio ───────────────────── */}
+      <section className="slide-dark flex min-h-[100dvh] snap-start items-center px-5 text-white">
+        <div className="mx-auto w-full max-w-5xl py-24">
+          <Reveal>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-300">Studio</p>
+            <h2 className="mt-3 text-4xl font-semibold tracking-tight md:text-6xl">
+              Draw a structure,
+              <br />
+              get an apartment.
+            </h2>
+          </Reveal>
+          <Reveal delay={150}>
+            <p className="mt-6 max-w-2xl text-lg text-slate-300">
+              Sketch the walls with your pencil — they snap straight and clean. Pick a model, hit generate,
+              and watch the rooms get laid out inside, right where you drew them.
+            </p>
+          </Reveal>
+          <Reveal delay={300}>
+            <div className="mt-9">
+              <Cta href="/studio" dark>
+                ✦ Open the Studio
+              </Cta>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ───────────────────── Slide 6 · Live ───────────────────── */}
+      <section className="flex min-h-[100dvh] snap-start items-center border-y border-slate-200 bg-white px-5">
+        <div className="mx-auto w-full max-w-5xl py-24">
+          <Reveal>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">Live</p>
+            <h2 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900 md:text-6xl">
+              Train on the GPU.
+              <br />
+              Watch it learn.
+            </h2>
+          </Reveal>
+          <Reveal delay={150}>
+            <p className="mt-6 max-w-2xl text-lg text-slate-600">
+              Launch a real training run from the browser, watch the loss fall live, then compare every
+              generated plan with the real ground truth — side by side.
+            </p>
+          </Reveal>
+          <Reveal delay={300}>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Cta href="/live">Open the Live page →</Cta>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ───────────────────── Slide 7 · Closing ───────────────────── */}
+      <section className="flex min-h-[100dvh] snap-start items-center px-5">
+        <div className="mx-auto w-full max-w-5xl py-24 text-center">
+          <Reveal variant="scale">
+            <h2 className="text-4xl font-semibold tracking-tight text-slate-900 md:text-6xl">
+              Explore it yourself.
+            </h2>
+          </Reveal>
+          <Reveal delay={150}>
+            <div className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-4 md:grid-cols-4">
+              {[
+                ["/studio", "Studio", "draw → generate"],
+                ["/live", "Live", "train & compare"],
+                ["/models", "Models", "the leaderboard"],
+                ["/research", "Research", "ideas & papers"],
+              ].map(([href, t, d]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="group rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-indigo-300 hover:shadow"
+                >
+                  <div className="text-lg font-semibold text-slate-900">{t}</div>
+                  <div className="mt-1 text-sm text-slate-500">{d}</div>
+                  <span className="mt-3 inline-block text-sm font-medium text-indigo-600 group-hover:underline">
+                    Open →
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </section>
 
       <Footer />
-    </main>
+    </div>
   );
 }

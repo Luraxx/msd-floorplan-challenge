@@ -22,6 +22,19 @@ body {
   to { opacity: 1; }
 }
 
+@keyframes bobble {
+  0%, 100% { transform: translateY(0); opacity: 0.55; }
+  50% { transform: translateY(7px); opacity: 1; }
+}
+.scroll-hint { animation: bobble 1.8s ease-in-out infinite; }
+
+/* deck slide background accents */
+.slide-dark {
+  background: radial-gradient(1200px 600px at 70% -10%, rgba(79,70,229,0.18), transparent 60%),
+              radial-gradient(900px 500px at 0% 110%, rgba(14,165,233,0.14), transparent 55%),
+              #0b1220;
+}
+
 /* subtle architectural grid backdrop for hero */
 .grid-bg {
   background-image:
