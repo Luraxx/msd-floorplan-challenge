@@ -54,7 +54,7 @@ def main() -> None:
     ap.add_argument("--n", type=int, default=None, help="cap samples per side (use equal N)")
     ap.add_argument("--nearest-k", type=int, default=5)
     ap.add_argument("--size", type=int, default=512, help="render canvas px")
-    ap.add_argument("--device", default="cpu", help="cpu / mps / cuda (cpu safest for FID)")
+    ap.add_argument("--device", default=None, help="cpu / cuda (default: cuda if available)")
     ap.add_argument("--out", default=None, help="optional path to write metrics JSON")
     args = ap.parse_args()
 

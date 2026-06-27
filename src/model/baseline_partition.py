@@ -107,7 +107,7 @@ def _load_pickle(path: str):
         return pickle.load(fh)
 
 
-def _load_envelope(test_dir: str, tid: str, source: str):
+def _load_envelope(test_dir: str, tid: str, source: str, mode: str = "concave"):
     """Envelope for one test id. `struct_in` for the real task; `graph_out` for sanity runs."""
     if source == "graph_out":
         go = _load_pickle(os.path.join(test_dir, "graph_out", f"{tid}.pickle"))
@@ -117,7 +117,7 @@ def _load_envelope(test_dir: str, tid: str, source: str):
         if os.path.exists(p):
             arr = np.load(p)
             arr = arr[arr.files[0]] if hasattr(arr, "files") else arr
-            return envelope_from_struct_in(arr)
+            return envelope_from_struct_in(arr, mode=mode)
     raise FileNotFoundError(f"no struct_in for {tid} in {test_dir}/struct_in")
 
 
@@ -135,7 +135,7 @@ def run(args) -> None:
     for tid in ids:
         try:
             gi = _load_pickle(os.path.join(in_dir, f"{tid}.pickle"))
-            env = _load_envelope(args.test, tid, args.envelope_source)
+            env = _load_envelope(args.test, tid, args.envelope_source, mode=args.envelope_mode)
             G = predict(gi, env, mapping, doors=args.doors)
             problems = validate_graph_out(G, gi)
             if problems:
@@ -207,6 +207,8 @@ def main() -> None:
     ap.add_argument("--n", type=int, default=None, help="cap number of test ids (use equal N at eval)")
     ap.add_argument("--envelope-source", choices=["struct_in", "graph_out"], default="struct_in",
                     help="struct_in = real task; graph_out = sanity run (train-as-test)")
+    ap.add_argument("--envelope-mode", choices=["concave", "convex"], default="concave",
+                    help="concave = trace real interior footprint (better FID); convex = legacy hull")
     ap.add_argument("--doors", action="store_true", help="also place door-opening geometry (post-step)")
     ap.add_argument("--selfcheck", action="store_true", help="run the synthetic pipeline test and exit")
     args = ap.parse_args()

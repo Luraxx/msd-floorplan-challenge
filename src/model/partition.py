@@ -40,21 +40,62 @@ def envelope_from_polygons(polys) -> Polygon:
     return _largest_polygon(closed)
 
 
-def envelope_from_struct_in(struct_in: np.ndarray) -> Polygon:
+def envelope_from_struct_in(struct_in: np.ndarray, mode: str = "concave") -> Polygon:
     """
-    Best-effort apartment envelope from the struct_in tensor:
-    ch0 = wall mask (0 = wall), ch1/ch2 = world y/x per pixel.
+    Apartment envelope from the struct_in tensor.
 
-    ponytail: convex hull of the structure pixels in world coords — good enough
-    to seed the partition. Refine to a concave hull / hole-aware outline once you
-    can eyeball it against real struct_in (the only piece that needs real data).
+    Coordinate convention (verified, matches unet_common): ch0 = wall/free mask
+    (0 = wall, 255 = free); ch1 = world x per COLUMN; ch2 = world y per ROW.
+
+    mode="concave" (default): trace the ENCLOSED building interior (flood-fill the
+      free space from the border = outside; the rest is the real, concave
+      footprint). This is the FID lever vs. a convex hull, which spills cells
+      outside the true plan shape.
+    mode="convex": convex hull of the structure pixels (legacy fallback).
     """
-    ch0, wy, wx = struct_in[..., 0], struct_in[..., 1], struct_in[..., 2]
-    mask = ch0 < 0.5  # walls/structure footprint
+    s = np.asarray(struct_in, dtype=float)
+    ch0 = s[..., 0]
+    col_x = s[0, :, 1]   # world x for each column (ch1 is constant down columns)
+    row_y = s[:, 0, 2]   # world y for each row    (ch2 is constant along rows)
+    nc, nr = len(col_x), len(row_y)
+
+    if mode == "concave":
+        try:
+            from scipy import ndimage
+            from skimage import measure
+            free = ch0 > 127
+            walls = ndimage.binary_dilation(~free, iterations=2)   # close small gaps
+            free2 = ~walls
+            lab, _ = ndimage.label(free2)
+            border = set(lab[0, :]) | set(lab[-1, :]) | set(lab[:, 0]) | set(lab[:, -1])
+            border.discard(0)
+            outside = np.isin(lab, list(border)) if border else np.zeros_like(free2)
+            interior = ndimage.binary_dilation(free2 & ~outside, iterations=2)
+            if interior.sum() >= 0.02 * interior.size:
+                lab2, n2 = ndimage.label(interior)
+                if n2 > 1:
+                    sizes = ndimage.sum(np.ones_like(lab2), lab2, range(1, n2 + 1))
+                    interior = lab2 == int(np.argmax(sizes) + 1)
+                contours = measure.find_contours(interior.astype(float), 0.5)
+                if contours:
+                    cont = measure.approximate_polygon(max(contours, key=len), tolerance=2.0)
+                    pts = [(float(col_x[min(int(round(c)), nc - 1)]),
+                            float(row_y[min(int(round(r)), nr - 1)])) for r, c in cont]
+                    if len(pts) >= 3:
+                        poly = Polygon(pts)
+                        if not poly.is_valid:
+                            poly = poly.buffer(0)
+                        poly = _largest_polygon(poly)
+                        if not poly.is_empty and poly.area > 0:
+                            return poly
+        except Exception:
+            pass  # fall through to the convex hull
+
+    mask = ch0 < 128  # walls/structure footprint
     ys, xs = np.where(mask)
     if len(xs) < 3:
         raise ValueError("struct_in has too few structure pixels for an envelope")
-    pts = np.column_stack([wx[ys, xs], wy[ys, xs]])
+    pts = np.column_stack([col_x[xs], row_y[ys]])
     hull = MultiPoint([tuple(p) for p in pts]).convex_hull
     if hull.geom_type != "Polygon":
         raise ValueError("could not form an envelope polygon from struct_in")

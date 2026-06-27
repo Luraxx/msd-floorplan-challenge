@@ -17,6 +17,14 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 
 from prdc import compute_prdc
 
+# Silence the noisy "Could not initialize NNPACK! Reason: Unsupported hardware."
+# warning that fires on CPU convs on this box. (The python torch.backends.nnpack
+# module has no `enabled` attr; the real switch is this C++ flag.)
+try:
+    torch._C._set_nnpack_enabled(False)
+except Exception:
+    pass
+
 
 def _to_tensor(images: np.ndarray) -> torch.Tensor:
     """(N,H,W,3) uint8 -> (N,3,H,W) uint8 torch tensor."""
@@ -42,7 +50,9 @@ def compute_metrics(real_images: np.ndarray, fake_images: np.ndarray,
                     batch_size: int = 32) -> dict:
     """Return {fid, density, coverage, precision, recall} for two image sets."""
     if device is None:
-        device = "cpu"  # safe default; FID's final compute needs float64 (no MPS)
+        # GPU (ROCm/CUDA) supports float64 for FID's covariance and is far faster;
+        # fall back to CPU only when no GPU is present (MPS can't do float64).
+        device = "cuda" if torch.cuda.is_available() else "cpu"
     if real_images.shape[0] != fake_images.shape[0]:
         print(f"[!] N differs (real={real_images.shape[0]}, fake={fake_images.shape[0]}); "
               "FID covariance is unstable with unequal/small N.")
