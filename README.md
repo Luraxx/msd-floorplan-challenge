@@ -221,17 +221,62 @@ This ≈ the real-vs-real ceiling (it outputs real plans), which closes the
 submission→eval loop and shows the metrics are **distributional and partially
 gameable** — any method emitting plausible real-shaped layouts scores well.
 
-**v2 lever (stronger, honest conditioning):** the walls are given in `struct_in`.
-Polygonize the `ch0` wall mask into room faces (handle doorway gaps), map pixels to
-world coords via `ch1`/`ch2`, label faces from the access graph, build `graph_out`.
-Geometry then matches each specific input's structure.
+**Nuance on "walls are given":** `struct_in` carries the **load-bearing** structure
+(outer walls + columns), *not* the thin partition walls between rooms. So the room
+boundaries are **not** fully determined by the input — the partition walls have to be
+**generated**. Two readings of v2 follow from this:
+- if a clean room tiling can be polygonized straight from `ch0`, segment-and-label it;
+- otherwise treat it as a generation problem: partition the envelope into one cell per
+  graph node, where the cell boundaries *are* the generated partition walls.
 
-## 10. Roadmap
+## 10. Baseline v2 — graph-conditioned partition + labelling
+
+`src/model/baseline_partition.py`: don't retrieve a whole plan — **generate geometry
+per graph node**. The idea is "label every vertex of the graph": give each node a room
+type *and* a room cell.
+
+```
+graph_in (+ envelope) ─partition→ one Voronoi cell per node   (src/model/partition.py)
+                      ─label────→ room_type from zoning_type   (src/model/labeling.py)
+                      ─assemble─→ graph_out + validate          (src/eval/validate.py)
+                      ─[doors]──→ door point on shared wall      (place_doors, optional)
+```
+
+- **Partition (the "constraint solver"):** one seed per node, laid out by a spring
+  layout of the adjacency graph (adjacent rooms attract → their cells share a wall),
+  then Voronoi cells clipped to the envelope + a couple of Lloyd iterations. Cells tile
+  the envelope by construction; their borders are the partition walls.
+- **Labelling:** `zoning_type → room_type` learned as argmax `P(room_type|zoning_type)`
+  from the node-aligned train pairs (handles the Zone2/Zone3 fan-out); falls back to the
+  fixed MSD grouping with no train data.
+- **Doors:** connectivity edges are carried over (topology preserved); `--doors` also
+  places door geometry on shared walls (the scorer ignores it; downstream wants it).
+- **No hidden failures:** every plan is checked against the renderer's contract
+  (`src/eval/validate.py` — node `1` exists with `room_type`; every node has
+  `geometry`/`room_type`/`centroid`; edges typed) before it is written; failing ids are
+  **not** emitted (backfill them with retrieval).
+
+```bash
+# no dataset needed — verify the full pipeline on a synthetic apartment
+python src/model/baseline_partition.py --selfcheck
+
+# real data
+python src/model/baseline_partition.py --test <MSD>/test --train <MSD>/train \
+    --out outputs/generated_v2 --n 400 --doors
+python src/eval/run_eval.py --real <MSD>/test/graph_out --fake outputs/generated_v2 --n 400
+```
+
+> ⚠️ `envelope_from_struct_in` (convex hull of structure pixels) is the one piece not
+> yet validated against real `struct_in` — refine it once the 16 GB split is on disk.
+> Until then, `--envelope-source graph_out` runs the pipeline against derived outlines.
+
+## 11. Roadmap
 
 - [x] Repo structure + README
 - [x] Data visualization (`src/visualize.py`) → `outputs/samples_overview.png`
 - [x] Download & inspect real CSV columns (confirmed: `roomtype`, walls/openings)
 - [x] Evaluation pipeline (render → features → FID + density/coverage) — validated
 - [x] Baseline v1 — retrieval (FID 36 @ N=400)
-- [ ] Baseline v2 — wall-mask segmentation → labelled rooms
+- [x] Baseline v2 — graph-conditioned partition + labelling (`baseline_partition.py`; self-check passes)
+- [ ] Validate `envelope_from_struct_in` against real `struct_in`; run v2 vs retrieval at equal N
 - [ ] Confirm official submission format vs Amine's slides
