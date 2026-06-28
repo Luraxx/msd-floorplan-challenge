@@ -98,6 +98,7 @@ def build_model(d=256, enc_layers=4, dec_layers=6, heads=8):
             self.x0_head = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, 2))
             self.type_head = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, N_TYPE))
             self.valid_head = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, 1))
+            self.count_head = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, d), nn.SiLU(), nn.Linear(d, 1))
 
         def encode(self, verts, vmask):
             V = verts.shape[1]
@@ -105,6 +106,12 @@ def build_model(d=256, enc_layers=4, dec_layers=6, heads=8):
             for b in self.enc:
                 h = b(h, vmask)
             return h
+
+        def count(self, out_emb, out_mask):
+            """Predict the room count from the outline encoding (pooled over vertices)."""
+            m = out_mask[:, :, None]
+            pooled = (out_emb * m).sum(1) / (m.sum(1) + 1e-6)
+            return self.count_head(pooled).squeeze(-1)
 
         def forward(self, noisy_xy, t, out_emb, out_mask):
             h = self.xy_in(noisy_xy) + self.tmlp(temb(t, h_dim := out_emb.shape[-1]))[:, None, :]
@@ -154,13 +161,14 @@ def train(args):
             l_type = (F.cross_entropy(plog.reshape(-1, N_TYPE), ty.reshape(-1), reduction="none")
                       .reshape(B, -1) * va).sum() / (va.sum() + 1e-6)
             l_val = F.binary_cross_entropy_with_logits(pval, va)
-            loss = l_pos + 0.5 * l_type + 0.5 * l_val
+            l_count = F.mse_loss(net.count(out_emb, vmask), va.sum(1))      # global room count from outline
+            loss = l_pos + 0.5 * l_type + 0.5 * l_val + 0.1 * l_count
             opt.zero_grad(); loss.backward()
             torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
             opt.step()
             tot += loss.item() * B
         if (ep + 1) % 25 == 0 or ep == 0:
-            print(f"epoch {ep+1}/{args.epochs}  loss={tot/M:.4f}  (pos={l_pos.item():.3f} type={l_type.item():.3f} val={l_val.item():.3f})")
+            print(f"epoch {ep+1}/{args.epochs}  loss={tot/M:.4f}  (pos={l_pos.item():.3f} type={l_type.item():.3f} val={l_val.item():.3f} count={l_count.item():.2f})")
     os.makedirs(os.path.dirname(WEIGHTS), exist_ok=True)
     torch.save({"net": net.state_dict()}, WEIGHTS)
     print(f"saved -> {WEIGHTS}")
@@ -178,29 +186,29 @@ def _load_net(dev):
 
 
 def sample(dev, verts, vmask, steps=100):
-    """Returns (centroids[N,2], types[N], valid[N]) in the normalized frame."""
+    """Predict the room count K from the outline, then denoise exactly K centroids.
+    Returns (centroids[K,2], types[K], valid[K]=all True) in the normalized frame."""
     import torch
     net = _load_net(dev)
-    N = 16
     abar = schedule(RES_T, dev)
     ts = list(range(0, RES_T, max(1, RES_T // steps)))[::-1]
     v = torch.tensor(verts, device=dev)[None]; vm = torch.tensor(vmask, device=dev)[None]
     out_emb = net.encode(v, vm)
+    K = max(2, min(16, int(round(float(net.count(out_emb, vm).item())))))
     with torch.no_grad():
-        x = torch.randn(1, N, 2, device=dev)
-        plog = pval = None
+        x = torch.randn(1, K, 2, device=dev)
+        plog = None
         for i, ti in enumerate(ts):
             t = torch.full((1,), ti, device=dev)
             ab = abar[ti]
-            px0, plog, pval = net(x, t, out_emb, vm)
+            px0, plog, _ = net(x, t, out_emb, vm)
             px0 = px0.clamp(-0.7, 0.7)
             eps = (x - ab.sqrt() * px0) / (1 - ab).sqrt()
             tp = ts[i + 1] if i + 1 < len(ts) else None
             x = px0 if tp is None else abar[tp].sqrt() * px0 + (1 - abar[tp]).sqrt() * eps
     cents = x[0].cpu().numpy()
     types = plog[0].argmax(-1).cpu().numpy()
-    valid = (torch.sigmoid(pval[0]) > 0.5).cpu().numpy()
-    return cents, types, valid
+    return cents, types, np.ones(K, dtype=bool)
 
 
 def main():

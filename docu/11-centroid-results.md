@@ -5,11 +5,20 @@ outline-only, per-apartment, Voronoi reconstruction. It works.
 
 ## Result (n=1890 test apartments)
 
-| metric | value |
-|---|---|
-| FID | **60.5** |
-| Density | 0.275 |
-| Coverage | 0.256 |
+| metric | v1 | **v1.1 (count head)** |
+|---|---|---|
+| FID | 60.5 | **44.8** |
+| Density | 0.275 | 0.265 |
+| Coverage | 0.256 | **0.299** |
+| rooms/apt (median) | 10 | **8** (= real) |
+
+**v1.1 — global room-count head.** v1's per-node validity flag was near-random
+(BCE 0.64): with an exchangeable node set and symmetric noise, "which node is real"
+is ill-posed, so the model over-generated (~10 rooms vs 8 real). Fix: predict the
+room count **K globally from the outline encoding** (pooled) and denoise *exactly K*
+centroids — no validity needed. The count head learned almost perfectly (MSE
+5.9 → 0.21 ≈ 0.5 rooms). Room count now matches the real distribution (median 8),
+which alone cut **FID 60.5 → 44.8** and lifted coverage 0.256 → 0.299.
 
 The model is given **only the apartment outline** and generates the room count,
 centroids, types, and adjacency — then Voronoi reconstruction tiles the outline.
