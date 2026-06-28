@@ -1,6 +1,6 @@
 # EHL Paris Hackathon — Floor Plan Generation Challenge
 
-### 🌐 Live site: **http://g2rppuomu2ozk0hqtge9m2cv.46.225.0.236.sslip.io**
+### 🌐 Live site: **http://165.245.141.225/** · try the Studio: **http://165.245.141.225/studio**
 
 Conditional generation of apartment floor plans on the **Modified Swiss Dwellings (MSD)**
 dataset. Given an empty apartment **outline**, the model must generate the **room layout**
