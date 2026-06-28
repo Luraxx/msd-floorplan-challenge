@@ -18,6 +18,37 @@ export type ModelDoc = {
 
 export const MODELS: ModelDoc[] = [
   {
+    id: "centroid-v1",
+    name: "Centroid Diffusion · outline-only",
+    family: "generative",
+    status: "experimental",
+    generator: true,
+    date: "2026-06-28",
+    summary:
+      "The most ambitious model: it generates a COMPLETE apartment plan from ONLY the outline shape — no access graph given. A Transformer denoises a set of room centroids and reads off each room's type and how many rooms there are, then Voronoi reconstruction turns the centroid graph into tiled room polygons. It invents the room count, positions, types AND adjacency from a bare polygon.",
+    approach:
+      "GSDiff-style. A polygon-vertex Transformer encodes the apartment outline; a node-set Transformer denoises room centroids (continuous x0-diffusion) while cross-attending to the outline, with type + validity heads. v1 reconstructs polygons with plain Voronoi clipped to the outline (round-trip-proven to tile), derives adjacency from the resulting geometry, and marks a boundary corridor as the entrance. Trained from scratch on 18,580 apartments from the Kaggle CSV, 600 epochs on the MI300X.",
+    config: [
+      { label: "Input", value: "apartment outline ONLY (no graph)" },
+      { label: "Generates", value: "count + centroids + types + adjacency" },
+      { label: "Reconstruction", value: "Voronoi (separator algo = v2)" },
+      { label: "Training", value: "18,580 apartments, 600 ep, MI300X" },
+      { label: "Eval", value: "n=1890, separate per-apartment track" },
+    ],
+    metrics: { fid: 60.5, density: 0.275, coverage: 0.256, note: "OUTLINE-ONLY per-apartment track — NOT comparable to the per-floor graph-conditioned board (smaller plans, own real reference)" },
+    strengths: [
+      "Generates a full plan from JUST a shape — the only model that invents the access graph too",
+      "Coherent, space-filling apartments with a full access graph + entrance, adapting to the outline",
+      "Vector/graph all the way (no pixels); trained from scratch on 18.6k apartments",
+      "Natural fit for a Studio 'draw a shape → get a plan' demo",
+    ],
+    limitations: [
+      "FID 60.5 is on a SEPARATE outline-only per-apartment track — not comparable to the per-floor models above",
+      "Weak room-type head (set-symmetry also limits per-node validity) → over-predicts some types",
+      "v1 Voronoi rooms are a bit blobby; the separator algorithm (v2) + Stage-2 edges are the upgrade",
+    ],
+  },
+  {
     id: "corner-v1",
     name: "Corner Diffusion (HouseDiffusion-style)",
     family: "generative",
