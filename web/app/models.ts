@@ -18,6 +18,37 @@ export type ModelDoc = {
 
 export const MODELS: ModelDoc[] = [
   {
+    id: "corner-v1",
+    name: "Corner Diffusion (HouseDiffusion-style)",
+    family: "generative",
+    status: "trained",
+    generator: false,
+    date: "2026-06-28",
+    summary:
+      "The best LEARNED generative model we have — and the realization of the 'outer points + a denoiser that finds where they lie' idea. Each room is its 4 OUTER CORNERS (a box); a Transformer denoises all room boxes jointly from pure noise, conditioned on the access graph via graph-relational attention (door edges make rooms attend to each other). Trained from scratch on 4,382 floors. Beats the raster diffusion on FID AND density/coverage AND adjacency.",
+    approach:
+      "Represent each room by its axis-aligned box (4 outer corners) in the building frame (rooms are ~99% rectangular; a round-trip test reproduces real plans). A Transformer denoises all boxes jointly — one token per room (box + type embedding + diffusion time), with a learned per-head attention bias on every door/passage/entrance edge so connected rooms end up beside each other. Continuous diffusion, x0-prediction, DDIM sampling. The generated boxes then PAINT the real interior (smallest-box-first + nearest-fill) so rooms tile the envelope with no gaps (FID 138 → 96).",
+    config: [
+      { label: "Representation", value: "per-room box = 4 outer corners" },
+      { label: "Model", value: "Transformer, graph-relational attention" },
+      { label: "Diffusion", value: "x0-pred, DDIM 100 steps" },
+      { label: "Training", value: "4,382 floors, 400 ep, MI300X" },
+      { label: "Eval", value: "n=321 (R≤64, 80% assembled)" },
+    ],
+    metrics: { fid: 96.1, density: 0.254, coverage: 0.312, note: "n=321; best learned generator — door-adjacency 59% (raw boxes 71%) vs Rectilinear 41%" },
+    strengths: [
+      "Best FID of any LEARNED generator (96.1 < raster diffusion 103.1, refinement 102.1, U-Net 145.7)",
+      "Best density+coverage of the learned generators (0.254/0.312 vs raster 0.10/0.12)",
+      "Genuinely generative (diverse samples) AND graph-faithful (59% adjacency vs 41%)",
+      "Uses the corner representation the MSD-challenge top baseline (HouseDiffusion) wins with",
+    ],
+    limitations: [
+      "Rule-based Rectilinear still wins raw FID (80.9) — corner model is the best GENERATIVE one",
+      "Assembly success 80% (empty-cell fallback + larger R_MAX needed); R>64 floors skipped",
+      "Box-only (no L-shaped rooms yet); tiling trades adjacency (71%→59%) for FID/coverage",
+    ],
+  },
+  {
     id: "llm-v1",
     name: "LLM Layout · Claude (foundation model)",
     family: "llm",
