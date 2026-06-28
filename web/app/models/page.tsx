@@ -8,6 +8,7 @@ const FAMILY_COLOR: Record<ModelDoc["family"], string> = {
   generative: "#4f46e5",
   retrieval: "#0ea5e9",
   partition: "#16a34a",
+  llm: "#db2777",
 };
 const STATUS_LABEL: Record<ModelDoc["status"], string> = {
   baseline: "Baseline",
