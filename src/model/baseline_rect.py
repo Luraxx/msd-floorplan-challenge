@@ -104,6 +104,79 @@ def building_angle(interior) -> float:
     return best_ang
 
 
+def rectilinearize_graph(lab, interior, col_x, row_y, min_frac=1 / 400):
+    """Turn a (jagged) room-type label map into rectangular rooms in the building
+    frame, then a graph_out. Each connected room region -> its bounding rectangle
+    (rotated to the longest wall); overlaps resolved small-on-top; gaps -> nearest;
+    rooms linked by an MST. Combines a learned layout with clean geometry."""
+    from scipy import ndimage
+    from scipy.spatial import cKDTree
+    from unet_common import N_CLASSES
+    H, W = lab.shape
+    theta = building_angle(interior)
+    ys, xs = np.where(interior)
+    if len(ys) < 20:
+        return None
+    ct, st = np.cos(theta), np.sin(theta)
+    u = xs * ct + ys * st
+    v = -xs * st + ys * ct
+    boxes = []  # (room_type, umin, umax, vmin, vmax, area)
+    for cls in range(1, N_CLASSES):
+        m = lab == cls
+        if not m.any():
+            continue
+        cc, n = ndimage.label(m)
+        for k in range(1, n + 1):
+            cm = cc == k
+            a = int(cm.sum())
+            if a < max(8, int(H * W * min_frac)):
+                continue
+            cys, cxs = np.where(cm)
+            cu = cxs * ct + cys * st
+            cv = -cxs * st + cys * ct
+            boxes.append((cls - 1, cu.min(), cu.max(), cv.min(), cv.max(), a))
+    if not boxes:
+        return None
+    boxes.sort(key=lambda b: -b[5])           # big first -> small painted on top
+    assign = np.zeros(len(ys), dtype=int)
+    rtof = {}
+    for i, (rt, umin, umax, vmin, vmax, _a) in enumerate(boxes, start=1):
+        inb = (u >= umin) & (u <= umax) & (v >= vmin) & (v <= vmax)
+        assign[inb] = i
+        rtof[i] = rt
+    un = assign == 0
+    if un.any() and (~un).any():
+        pts = np.c_[ys, xs]
+        tree = cKDTree(pts[~un])
+        assign[un] = assign[~un][tree.query(pts[un])[1]]
+    rmap = np.zeros((H, W), dtype=int)
+    rmap[ys, xs] = assign
+
+    G = nx.Graph()
+    nid = 1
+    for i in range(1, len(boxes) + 1):
+        poly = region_to_poly(rmap == i, col_x, row_y)
+        if poly is None:
+            continue
+        G.add_node(nid, geometry=list(zip(*poly.exterior.coords.xy)), room_type=rtof[i],
+                   centroid=torch.tensor([poly.centroid.x, poly.centroid.y]))
+        nid += 1
+    if G.number_of_nodes() < 2:
+        return G
+    polys = {n: Polygon(d["geometry"]) for n, d in G.nodes(data=True)}
+    ids = list(polys)
+    adj = nx.Graph(); adj.add_nodes_from(ids)
+    for a in range(len(ids)):
+        for b in range(a + 1, len(ids)):
+            pa, pb = polys[ids[a]], polys[ids[b]]
+            if pa.buffer(0.35).intersection(pb.buffer(0.35)).length > 0.6:
+                ca, cb = G.nodes[ids[a]]["centroid"], G.nodes[ids[b]]["centroid"]
+                adj.add_edge(ids[a], ids[b], weight=float(np.hypot(ca[0] - cb[0], ca[1] - cb[1])))
+    for x, y in nx.minimum_spanning_tree(adj).edges():
+        G.add_edge(x, y, connectivity="door")
+    return G
+
+
 def region_to_poly(mask, col_x, row_y):
     from skimage import measure
     cs = measure.find_contours(mask.astype(float), 0.5)

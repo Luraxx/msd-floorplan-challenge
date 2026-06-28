@@ -205,7 +205,13 @@ def generate(args):
             lab = sample(dev, cond, steps=args.steps)
             free64 = free[np.ix_(idx, idx)]
             lab = np.where(free64, lab, 0)
-            g = C.vectorize(lab, col[idx], row[idx])
+            if getattr(args, "rectilinear", False):
+                from baseline_rect import rectilinearize_graph
+                g = rectilinearize_graph(lab, free64, col[idx], row[idx])
+                if g is None or g.number_of_nodes() < 2:
+                    continue
+            else:
+                g = C.vectorize(lab, col[idx], row[idx])
             with open(os.path.join(args.out, f"{tid}.pickle"), "wb") as fh:
                 pickle.dump(g, fh)
             written += 1
@@ -228,6 +234,7 @@ def main():
     g.add_argument("--out", default="outputs/generated_diff")
     g.add_argument("--n", type=int, default=None)
     g.add_argument("--steps", type=int, default=100)
+    g.add_argument("--rectilinear", action="store_true", help="rule-based rectangular cleanup of each room")
     a = ap.parse_args()
     train(a) if a.cmd == "train" else generate(a)
 
