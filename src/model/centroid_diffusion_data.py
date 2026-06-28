@@ -147,7 +147,7 @@ def iter_apartments(csv, limit=None):
 
 
 def build(args):
-    VT, VM, CE, TY, VA, AD, TF, PID = [], [], [], [], [], [], [], []
+    VT, VM, CE, TY, VA, AD, TF, PID, UID = [], [], [], [], [], [], [], [], []
     kept = 0
     for uid, pid, rooms in iter_apartments(args.csv, args.n):
         s = apartment_sample(rooms)
@@ -155,14 +155,15 @@ def build(args):
             continue
         vt, vm, ce, ty, va, ad = _pad(s)
         VT.append(vt); VM.append(vm); CE.append(ce); TY.append(ty); VA.append(va)
-        AD.append(ad); TF.append(s["tf"]); PID.append(pid)
+        AD.append(ad); TF.append(s["tf"]); PID.append(pid); UID.append(int(uid))
         kept += 1
         if kept % 2000 == 0:
             print(f"  {kept} apartments")
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     np.savez_compressed(args.out, out_verts=np.stack(VT), out_mask=np.stack(VM),
                         cents=np.stack(CE), types=np.stack(TY), valid=np.stack(VA),
-                        adj=np.stack(AD), tf=np.stack(TF), plan_id=np.array(PID))
+                        adj=np.stack(AD), tf=np.stack(TF), plan_id=np.array(PID),
+                        unit_id=np.array(UID))
     rr = np.array([v.sum() for v in VA])
     print(f"Cached {kept} apartments -> {args.out}")
     print(f"rooms/apt: median={int(np.median(rr))} max={int(rr.max())}; V_MAX={V_MAX} N_MAX={N_MAX}")

@@ -13,7 +13,7 @@ const PY = path.join(ROOT, ".venv", "bin", "python");
 const SCRIPT = path.join(ROOT, "scripts", "web_render.py");
 const CACHE = path.join(ROOT, "outputs", "render-cache");
 
-const KINDS = new Set(["walls", "rooms", "graph", "pred"]);
+const KINDS = new Set(["walls", "rooms", "graph", "pred", "truth"]);
 
 // GET /api/sample?split=train&id=10000&kind=rooms&size=512[&pred=<dir>]
 export async function GET(req: NextRequest) {
@@ -25,18 +25,33 @@ export async function GET(req: NextRequest) {
   const predDir = (sp.get("pred") || "").replace(/[^a-zA-Z0-9_\-]/g, "");
   if (!id) return new Response("missing id", { status: 400 });
 
-  const tag = kind === "pred" ? `pred-${predDir}` : kind;
+  const tag = kind === "pred" ? `pred-${predDir}` : kind === "truth" ? `truth-${predDir}` : kind;
   const outPath = path.join(CACHE, `${split}_${id}_${tag}_${size}.png`);
 
   try {
     await access(outPath);
   } catch {
     await mkdir(CACHE, { recursive: true });
-    const args = ["--split", split, "--id", id, "--kind", kind, "--out", outPath, "--size", String(size)];
+    let args: string[];
     if (kind === "pred") {
       if (!predDir) return new Response("missing pred model", { status: 400 });
       // pred = model id -> its generated predictions in the model store
-      args.push("--pred-dir", path.join(ROOT, "outputs", "models", predDir, "generated"));
+      args = ["--split", split, "--id", id, "--kind", "pred", "--out", outPath, "--size", String(size),
+        "--pred-dir", path.join(ROOT, "outputs", "models", predDir, "generated")];
+    } else if (kind === "truth") {
+      // ground truth: prefer the model's OWN real reference (outline-only track,
+      // e.g. centroid-v1 whose ids are apartment unit_ids, not test floors); else
+      // fall back to the per-floor test graph_out.
+      let realDir = "";
+      if (predDir) {
+        const real = path.join(ROOT, "outputs", "models", predDir, "real");
+        try { await access(path.join(real, `${id}.pickle`)); realDir = real; } catch { /* no per-model real */ }
+      }
+      args = realDir
+        ? ["--split", "test", "--id", id, "--kind", "pred", "--out", outPath, "--size", String(size), "--pred-dir", realDir]
+        : ["--split", "test", "--id", id, "--kind", "rooms", "--out", outPath, "--size", String(size)];
+    } else {
+      args = ["--split", split, "--id", id, "--kind", kind, "--out", outPath, "--size", String(size)];
     }
     try {
       await execFileP(PY, [SCRIPT, ...args], { cwd: ROOT, timeout: 30000, maxBuffer: 1 << 20 });

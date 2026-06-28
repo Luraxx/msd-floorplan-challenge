@@ -151,7 +151,7 @@ def _save(G, gi_like, out, tid):
 def run_generate(args, sample_fn, device_fn):
     dev = device_fn()
     z = np.load(args.data)
-    pid = z["plan_id"]; test = np.where(pid % 10 == 0)[0]
+    pid = z["plan_id"]; uid = z["unit_id"]; test = np.where(pid % 10 == 0)[0]
     if args.n:
         test = test[: args.n]
     os.makedirs(args.out, exist_ok=True)
@@ -166,7 +166,7 @@ def run_generate(args, sample_fn, device_fn):
             G = reconstruct(cents, types, valid, outline, tf)
             if G.number_of_nodes() < 2:
                 raise ValueError("degenerate")
-            with open(os.path.join(args.out, f"{int(k)}.pickle"), "wb") as fh:
+            with open(os.path.join(args.out, f"{int(uid[k])}.pickle"), "wb") as fh:
                 pickle.dump(G, fh)
             written += 1
         except Exception as e:
