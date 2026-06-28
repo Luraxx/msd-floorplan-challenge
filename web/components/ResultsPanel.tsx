@@ -9,6 +9,7 @@ type Run = {
   ids: string[];
   metrics: Record<string, number> | null;
   updatedAt: number | null;
+  createdAt?: number;
 };
 type Baseline = { name: string; fid: number; density: number; coverage: number };
 type Results = { runs: Run[]; baselines: Baseline[] };
@@ -101,9 +102,9 @@ export default function ResultsPanel() {
         {id && run && (
           <div className="grid gap-4 md:grid-cols-2">
             <Figure title="Ground truth (real)" note="real reference"
-              src={`/api/sample?id=${id}&kind=truth&pred=${run.dir}&size=512`} />
+              src={`/api/sample?id=${id}&kind=truth&pred=${run.dir}&size=512&v=${run.createdAt ?? 0}`} />
             <Figure title={`Generated · ${run.label}`} note={`${run.dir} · real walls overlaid`}
-              src={`/api/sample?split=test&id=${id}&kind=pred&pred=${run.dir}&fit=1&size=512`} />
+              src={`/api/sample?split=test&id=${id}&kind=pred&pred=${run.dir}&fit=1&size=512&v=${run.createdAt ?? 0}`} />
           </div>
         )}
       </div>
