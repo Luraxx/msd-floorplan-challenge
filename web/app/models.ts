@@ -18,34 +18,63 @@ export type ModelDoc = {
 
 export const MODELS: ModelDoc[] = [
   {
-    id: "centroid-v1",
-    name: "Centroid Diffusion · outline-only",
+    id: "centroid-v2",
+    name: "Centroid Diffusion · outline-only (v2 · count head)",
     family: "generative",
-    status: "experimental",
+    status: "trained",
     generator: true,
     date: "2026-06-28",
     summary:
-      "The most ambitious model: it generates a COMPLETE apartment plan from ONLY the outline shape — no access graph given. A Transformer denoises a set of room centroids, a global head predicts HOW MANY rooms straight from the outline, and Voronoi reconstruction tiles the result. It invents the room count, positions, types AND adjacency from a bare polygon. The room-count head (v1.1) cut FID 60.5 → 44.8.",
+      "The most ambitious model: it generates a COMPLETE apartment plan from ONLY the outline shape — no access graph given. A Transformer denoises a set of room centroids, a global head predicts HOW MANY rooms straight from the outline, and Voronoi reconstruction tiles the result. It invents the room count, positions, types AND adjacency from a bare polygon. Adding the global room-count head over v1 cut FID 58.0 → 44.8.",
     approach:
-      "GSDiff-style. A polygon-vertex Transformer encodes the apartment outline; a node-set Transformer denoises room centroids (continuous x0-diffusion) while cross-attending to the outline. A global count head predicts the room number K from the outline encoding — sidestepping the ill-posed per-node validity of an exchangeable set — and exactly K centroids are denoised. Plain Voronoi clipped to the outline tiles the rooms (round-trip-proven), adjacency is derived from the geometry, a boundary corridor is the entrance. Trained from scratch on 18,580 apartments (Kaggle CSV), 600 epochs on the MI300X.",
+      "GSDiff-style. A polygon-vertex Transformer encodes the apartment outline; a node-set Transformer denoises room centroids (continuous x0-diffusion) while cross-attending to the outline. A global count head predicts the room number K from the outline encoding — sidestepping the ill-posed per-node validity of an exchangeable set (v1) — and exactly K centroids are denoised. Plain Voronoi clipped to the outline tiles the rooms (round-trip-proven), adjacency is derived from the geometry, a boundary corridor is the entrance. Trained from scratch on 18,580 apartments (Kaggle CSV), 600 epochs on the MI300X.",
     config: [
       { label: "Input", value: "apartment outline ONLY (no graph)" },
       { label: "Generates", value: "count + centroids + types + adjacency" },
       { label: "Room count", value: "global head off the outline (median 8 = real)" },
-      { label: "Reconstruction", value: "Voronoi (separator algo = v2)" },
+      { label: "Reconstruction", value: "Voronoi (separator algo next)" },
       { label: "Eval", value: "n=1890, separate per-apartment track" },
     ],
-    metrics: { fid: 44.8, density: 0.265, coverage: 0.299, note: "OUTLINE-ONLY per-apartment track — NOT comparable to the per-floor graph-conditioned board. v1.1 count head: FID 60.5→44.8, rooms 10→8=real" },
+    metrics: { fid: 44.8, density: 0.265, coverage: 0.299, note: "OUTLINE-ONLY per-apartment track — NOT comparable to the per-floor graph-conditioned board. Count head vs v1: FID 58.0→44.8, rooms 10→8=real" },
     strengths: [
       "Generates a full plan from JUST a shape — the only model that invents the access graph too",
-      "Global count head nails the room number (median 8 = real) → FID 60.5 → 44.8",
+      "Global count head nails the room number (median 8 = real) → FID 58.0 → 44.8 over v1",
       "Coherent, space-filling apartments with a full access graph + entrance, adapting to the outline",
       "Vector/graph all the way (no pixels); a natural fit for a Studio 'draw a shape → plan' demo",
     ],
     limitations: [
       "FID 44.8 is on a SEPARATE outline-only per-apartment track — not comparable to the per-floor models above",
       "Weak room-type head (types are hard to infer from position alone) → over-predicts some types",
-      "v1 Voronoi rooms are a bit blobby; the separator algorithm (v2) + Stage-2 edges are the upgrade",
+      "Voronoi rooms are a bit blobby; the separator algorithm + Stage-2 edges are the next upgrade",
+    ],
+  },
+  {
+    id: "centroid-v1",
+    name: "Centroid Diffusion · outline-only (v1 · no count head)",
+    family: "generative",
+    status: "trained",
+    generator: false,
+    date: "2026-06-28",
+    summary:
+      "The first version of the outline-only centroid model — same architecture as v2 but WITHOUT the room-count head. It decides how many rooms via a per-node validity flag, which is ill-posed for an exchangeable node set (symmetric noise) and over-generates (~10 rooms vs 8 real). Kept as the honest baseline that v2's count head improves on (FID 58.0 → 44.8).",
+    approach:
+      "GSDiff-style. A polygon-vertex Transformer encodes the apartment outline; a node-set Transformer denoises room centroids (x0-diffusion) cross-attending to the outline, with type + per-node validity heads. At inference the validity flag (sigmoid>0.5) decides which of 16 nodes are real — but with symmetric noise this is near-random, so it over-generates. Plain Voronoi clipped to the outline tiles the rooms. Trained from scratch on 18,580 apartments, 600 epochs on the MI300X.",
+    config: [
+      { label: "Input", value: "apartment outline ONLY (no graph)" },
+      { label: "Room count", value: "per-node validity (over-generates, median 10)" },
+      { label: "Reconstruction", value: "Voronoi" },
+      { label: "Eval", value: "n=1890, separate per-apartment track" },
+    ],
+    metrics: { fid: 58.0, density: 0.284, coverage: 0.269, note: "OUTLINE-ONLY per-apartment track. v1 baseline (no count head); v2 adds the count head → FID 58.0→44.8, rooms 10→8=real" },
+    strengths: [
+      "Generates a full plan from JUST a shape — count, centroids, types and adjacency",
+      "Validated that the centroid + Voronoi representation works (round-trip ≈ real)",
+      "The honest 'before' baseline for the count-head ablation (v2)",
+    ],
+    limitations: [
+      "Over-generates rooms (median 10 vs 8 real) — per-node validity is ill-posed for a set → fixed by v2's count head",
+      "Higher FID (58.0) than v2 (44.8); same blobby Voronoi geometry",
+      "Superseded by centroid-v2 — kept only to show the count-head improvement",
     ],
   },
   {
