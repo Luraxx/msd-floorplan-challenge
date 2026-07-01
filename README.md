@@ -284,3 +284,4 @@ python src/eval/run_eval.py --real <MSD>/test/graph_out --fake outputs/generated
 - [x] Baseline v2 — graph-conditioned partition + labelling (`baseline_partition.py`; self-check passes)
 - [ ] Validate `envelope_from_struct_in` against real `struct_in`; run v2 vs retrieval at equal N
 - [ ] Confirm official submission format vs Amine's slides
+ 
